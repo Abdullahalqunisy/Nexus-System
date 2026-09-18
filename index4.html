@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS SYSTEM</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0c0c0d; --bg-2:#141416; --panel:#1a1a1d;
+    --gold:#caa054; --gold-2:#e6c07b; --gold-dim:#8a6f3d;
+    --text:#f2ede3; --text-dim:#a89f8f;
+    --danger:#c0554a; --ok:#5c9b6f; --radius:10px;
+    --font:'Tajawal','Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; background:var(--bg); color:var(--text); font-family:var(--font); overflow-x:hidden;}
+  body{background:radial-gradient(ellipse 900px 500px at 50% -10%, rgba(202,160,84,0.12), transparent 60%), var(--bg); min-height:100vh;}
+  ::selection{background:var(--gold); color:#1a1a1a;}
+  .screen{ min-height:100vh; display:none; flex-direction:column; }
+  .screen.active{ display:flex; }
+
+  #screen-login{ align-items:center; justify-content:center; padding:24px; background:radial-gradient(circle at 50% 20%, rgba(202,160,84,0.15), transparent 55%), var(--bg); }
+  .login-card{ width:100%; max-width:400px; background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 40%), var(--panel); border:1px solid rgba(202,160,84,0.25); border-radius:16px; padding:38px 32px 32px; box-shadow:0 30px 60px -20px rgba(0,0,0,0.7); }
+  .brand{ text-align:center; margin-bottom:26px; }
+  .brand .mark{ font-weight:900; font-size:44px; letter-spacing:6px; background:linear-gradient(180deg,#fff, var(--gold-2) 60%, var(--gold-dim)); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1; }
+  .brand .sub{ color:var(--text-dim); font-size:13px; margin-top:8px; letter-spacing:1px; }
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:13px; color:var(--text-dim); margin-bottom:7px; }
+  .field input, .field select{ width:100%; padding:13px 14px; border-radius:9px; background:#101012; border:1px solid #2c2a26; color:var(--text); font-family:var(--font); font-size:15px; outline:none; transition:border-color .15s, box-shadow .15s; }
+  .field input:focus{ border-color:var(--gold); box-shadow:0 0 0 3px rgba(202,160,84,0.15); }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px 16px; border:none; border-radius:9px; background:linear-gradient(180deg, var(--gold-2), var(--gold)); color:#211a0c; font-family:var(--font); font-weight:700; font-size:15px; cursor:pointer; transition:transform .1s, filter .15s; }
+  .btn:hover{ filter:brightness(1.08); }
+  .btn:active{ transform:scale(0.98); }
+  .btn:disabled{ opacity:0.6; cursor:default; }
+  .btn-ghost{ background:transparent; border:1px solid rgba(202,160,84,0.4); color:var(--gold-2); }
+  .login-error{ margin-top:14px; padding:10px 12px; border-radius:8px; background:rgba(192,85,74,0.12); border:1px solid rgba(192,85,74,0.4); color:#e2938a; font-size:13.5px; display:none; text-align:center; }
+  .login-error.show{ display:block; }
+
+  #screen-app{ min-height:100vh; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-bottom:1px solid rgba(202,160,84,0.15); background:rgba(20,20,22,0.85); backdrop-filter:blur(8px); position:sticky; top:0; z-index:20; }
+  .topbar .mark-small{ font-weight:900; letter-spacing:3px; font-size:19px; color:var(--gold-2); }
+  .topbar .who{ font-size:13px; color:var(--text-dim); }
+  .topbar .who b{ color:var(--gold-2); }
+  .logout-btn{ padding:8px 16px; border-radius:8px; border:1px solid rgba(192,85,74,0.4); background:rgba(192,85,74,0.08); color:#e2938a; font-family:var(--font); font-size:13.5px; cursor:pointer; }
+  .logout-btn:hover{ background:rgba(192,85,74,0.18); }
+  .container{ max-width:1080px; margin:0 auto; padding:34px 20px 80px; width:100%; }
+  .back-row{ margin-bottom:22px; }
+  .back-btn{ display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:var(--text-dim); font-family:var(--font); font-size:13.5px; cursor:pointer; }
+  .back-btn:hover{ color:var(--gold-2); border-color:rgba(202,160,84,0.35); }
+  .page-title{ font-size:24px; font-weight:700; margin-bottom:6px; color:var(--text); }
+  .page-sub{ font-size:14px; color:var(--text-dim); margin-bottom:28px; }
+  .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  @media (max-width:640px){ .grid{ grid-template-columns:1fr; } }
+  .tile{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:22px 20px; border-radius:14px; text-align:right; background:linear-gradient(155deg, rgba(202,160,84,0.13), rgba(202,160,84,0.03)); border:1px solid rgba(202,160,84,0.22); cursor:pointer; transition:transform .12s, border-color .15s, background .15s; }
+  .tile:hover{ transform:translateY(-3px); border-color:var(--gold); background:linear-gradient(155deg, rgba(202,160,84,0.22), rgba(202,160,84,0.05)); }
+  .tile .icon{ font-size:22px; }
+  .tile .t-title{ font-size:16.5px; font-weight:700; color:var(--text); }
+  .tile .t-desc{ font-size:13px; color:var(--text-dim); line-height:1.5; }
+  .tile.wide{ grid-column:1 / -1; flex-direction:row; align-items:center; justify-content:space-between; }
+  .tile.wide .t-title{ font-size:17px; }
+  .panel-box{ background:var(--panel); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:22px 20px; margin-bottom:14px; }
+  .panel-box .p-title{ font-weight:700; font-size:15.5px; margin-bottom:6px; color:var(--gold-2); }
+  .panel-box .p-desc{ font-size:13.5px; color:var(--text-dim); line-height:1.7; }
+  .link-btn{ display:flex; align-items:center; justify-content:space-between; padding:15px 18px; border-radius:11px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); color:var(--text); text-decoration:none; font-size:14.5px; margin-bottom:12px; transition:border-color .15s, background .15s; }
+  .link-btn:hover{ border-color:var(--gold); background:rgba(202,160,84,0.08); }
+  .link-btn .arrow{ color:var(--gold-2); font-size:18px; }
+  .badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-size:11.5px; background:rgba(202,160,84,0.15); color:var(--gold-2); border:1px solid rgba(202,160,84,0.3); margin-bottom:14px; }
+  .badge.manager{ background:rgba(192,85,74,0.15); color:#e2938a; border-color:rgba(192,85,74,0.35); }
+  .meeting-card{ background:linear-gradient(155deg, rgba(202,160,84,0.16), rgba(202,160,84,0.04)); border:1px solid rgba(202,160,84,0.3); border-radius:16px; padding:26px 24px; margin-bottom:18px; }
+  .meeting-card .m-label{ font-size:13px; color:var(--text-dim); margin-bottom:4px; }
+  .meeting-card .m-date{ font-size:20px; font-weight:700; color:var(--gold-2); margin-bottom:10px; }
+  .meeting-card .m-note{ font-size:14.5px; color:var(--text); line-height:1.6; }
+  .form-box{ max-width:420px; }
+  .empty-note{ font-size:13.5px; color:var(--text-dim); margin-top:8px; }
+  .task-item{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .task-item .status-pill{ font-size:11px; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+  .status-pill.open{ background:rgba(202,160,84,0.15); color:var(--gold-2); border:1px solid rgba(202,160,84,0.3); }
+  .status-pill.done{ background:rgba(92,155,111,0.15); color:#8fd1a1; border:1px solid rgba(92,155,111,0.35); }
+  .mark-done-btn{ font-size:12px; padding:5px 10px; border-radius:7px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-dim); cursor:pointer; }
+  .mark-done-btn:hover{ color:var(--gold-2); border-color:var(--gold); }
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--panel); border:1px solid var(--gold); color:var(--gold-2); padding:12px 22px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:100; max-width:90%; text-align:center; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="screen active" id="screen-login">
+  <div class="login-card">
+    <div class="brand">
+      <div class="mark">NEXUS</div>
+      <div class="sub">نظام إدارة الفريق</div>
+    </div>
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label>اسم المستخدم</label>
+        <input type="text" id="loginUser" placeholder="أدخل اسم المستخدم" required>
+      </div>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="loginPass" placeholder="أدخل كلمة المرور" required>
+      </div>
+      <button type="submit" class="btn" id="loginBtn">تسجيل الدخول</button>
+      <div class="login-error" id="loginError">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="screen" id="screen-app">
+  <div class="topbar">
+    <div class="mark-small">NEXUS</div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div class="who">مسجل باسم <b id="whoName">—</b></div>
+      <button class="logout-btn" id="logoutBtn">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- DASHBOARD -->
+    <div class="page" id="page-dashboard">
+      <span class="badge" id="roleBadge">الإدارة العادية</span>
+      <div class="page-title">لوحة التحكم</div>
+      <div class="page-sub">اختر القسم اللي تبي تدخله</div>
+      <div class="grid">
+        <div class="tile" data-goto="page-tasks">
+          <div class="icon">🗂️</div>
+          <div class="t-title">المهام</div>
+          <div class="t-desc">استلام التكتات، الإشراف على المخالفين، الفويسات والشات</div>
+        </div>
+        <div class="tile" data-goto="page-tutorial">
+          <div class="icon">🎬</div>
+          <div class="t-title">الشروحات</div>
+          <div class="t-desc">شرح استلام التكت وطريقة العمل</div>
+        </div>
+        <div class="tile" data-goto="page-tickets">
+          <div class="icon">🔗</div>
+          <div class="t-title">روابط التذاكر</div>
+          <div class="t-desc">رابط تقديم الشكاوى ورابط تقديم صانع المحتوى</div>
+        </div>
+        <div class="tile" data-goto="page-meeting">
+          <div class="icon">📅</div>
+          <div class="t-title">الاجتماعات</div>
+          <div class="t-desc">مواعيد وتفاصيل اجتماعات الإدارة</div>
+        </div>
+        <div class="tile wide" data-goto="page-points">
+          <div>
+            <div class="t-title">⚠️ النقاط والتحذيرات</div>
+            <div class="t-desc">سجل النقاط والتحذيرات الصادرة، ومن أصدرها</div>
+          </div>
+          <div class="icon">›</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASKS HUB -->
+    <div class="page" id="page-tasks" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-dashboard">→ رجوع</button></div>
+      <div class="page-title">المهام</div>
+      <div class="page-sub">اختر المهمة اللي تبي تديرها</div>
+      <div class="grid">
+        <div class="tile" data-open-task="tickets" data-title="استلام تكتات">
+          <div class="icon">🎫</div><div class="t-title">استلام تكتات</div>
+          <div class="t-desc">متابعة التكتات الجديدة والرد عليها</div>
+        </div>
+        <div class="tile" data-open-task="violators" data-title="إشراف على المخالفين">
+          <div class="icon">🚫</div><div class="t-title">إشراف على المخالفين</div>
+          <div class="t-desc">مراجعة الحالات ومتابعة العقوبات</div>
+        </div>
+        <div class="tile" data-open-task="voice" data-title="إشراف على الفويسات">
+          <div class="icon">🎙️</div><div class="t-title">إشراف على الفويسات</div>
+          <div class="t-desc">متابعة الروومات الصوتية والحضور</div>
+        </div>
+        <div class="tile" data-open-task="chat" data-title="إشراف على الشات">
+          <div class="icon">💬</div><div class="t-title">إشراف على الشات</div>
+          <div class="t-desc">مراقبة النقاشات وتطبيق القوانين</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASK DETAIL (shared by all 4 categories) -->
+    <div class="page" id="page-task-detail" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-tasks">→ رجوع</button></div>
+      <div class="page-title" id="taskDetailTitle">المهمة</div>
+      <div class="page-sub">أضف عنصر جديد وشوف كل العناصر المسجّلة بهذا القسم</div>
+
+      <div class="panel-box">
+        <form class="form-box" id="taskForm" style="max-width:none; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+          <div class="field" style="flex:1; min-width:200px; margin-bottom:0;">
+            <label>العنوان</label>
+            <input type="text" id="taskTitle" placeholder="مثال: تكت رقم 42" required>
+          </div>
+          <div class="field" style="flex:2; min-width:220px; margin-bottom:0;">
+            <label>ملاحظة (اختياري)</label>
+            <input type="text" id="taskNote" placeholder="تفاصيل إضافية">
+          </div>
+          <button type="submit" class="btn" style="width:auto; padding:13px 22px;">إضافة</button>
+        </form>
+      </div>
+
+      <div id="taskListHolder"><div class="empty-note">جاري التحميل…</div></div>
+    </div>
+
+    <!-- TUTORIAL -->
+    <div class="page" id="page-tutorial" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-dashboard">→ رجوع</button></div>
+      <div class="page-title">الشروحات</div>
+      <div class="page-sub">شروحات فيديو لطريقة العمل بالإدارة</div>
+      <a class="link-btn" href="https://youtu.be/iyBQ0lOHOB4" target="_blank" rel="noopener">
+        <span>شرح استلام التكت ↓</span><span class="arrow">▶</span>
+      </a>
+    </div>
+
+    <!-- TICKET LINKS -->
+    <div class="page" id="page-tickets" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-dashboard">→ رجوع</button></div>
+      <div class="page-title">روابط التذاكر</div>
+      <div class="page-sub">روابط تقديم الشكاوى ورابط صانع المحتوى</div>
+      <a class="link-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSdZ3da_hiQNZSJairC4BR1zB7gFBaENZDZcxu_HmM2FgW_qag/viewform?usp=publish-editor" target="_blank" rel="noopener">
+        <span>رابط تقديم الشكاوى ↓</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSdXYHIM6nY1suoV_WUgGttENXOe1YqgNgqnd6qHhY2JvZRCng/viewform?usp=publish-editor" target="_blank" rel="noopener">
+        <span>رابط تقديم صانع محتوى ↓</span><span class="arrow">↗</span>
+      </a>
+    </div>
+
+    <!-- MEETINGS -->
+    <div class="page" id="page-meeting" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-dashboard">→ رجوع</button></div>
+      <div class="page-title">الاجتماعات</div>
+      <div class="page-sub">مواعيد اجتماعات الإدارة</div>
+      <div id="meetingCardHolder"><div class="empty-note">جاري التحميل…</div></div>
+
+      <div class="panel-box" id="managerMeetingExtra" style="display:none;">
+        <div class="p-title">إدارة الاجتماع (مسؤول)</div>
+        <form class="form-box" id="meetingForm" style="max-width:none;">
+          <div class="field"><label>تاريخ الاجتماع</label><input type="text" id="meetingDate" placeholder="مثال: 16/9/2026" required></div>
+          <div class="field"><label>نص الإعلان</label><input type="text" id="meetingAnnouncement" placeholder="مثال: اجتماع إدارة مهم!"></div>
+          <div style="display:flex; gap:10px;">
+            <button type="submit" class="btn">نشر / تحديث الاجتماع</button>
+            <button type="button" class="btn btn-ghost" id="deleteMeetingBtn">حذف الاجتماع</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- JOIN MEETING -->
+    <div class="page" id="page-join" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-meeting">→ رجوع</button></div>
+      <div class="page-title">الانضمام للاجتماع</div>
+      <div class="page-sub" id="joinSubtitle">اجتماع إدارة</div>
+      <form class="form-box" id="joinForm">
+        <div class="field"><label>الاسم</label><input type="text" id="joinName" placeholder="اسمك" required></div>
+        <div class="field"><label>الرقم</label><input type="text" id="joinNumber" placeholder="رقم التواصل" required></div>
+        <button type="submit" class="btn">انضمام</button>
+      </form>
+    </div>
+
+    <!-- POINTS & WARNINGS -->
+    <div class="page" id="page-points" style="display:none;">
+      <div class="back-row"><button class="back-btn" data-back="page-dashboard">→ رجوع</button></div>
+      <div class="page-title">النقاط والتحذيرات</div>
+      <div class="page-sub">سجل يوضح من أصدر كل نقطة أو تحذير ولمن</div>
+
+      <div class="panel-box" id="managerPointsPanel" style="display:none;">
+        <div class="p-title">إصدار نقطة / تحذير (مسؤول)</div>
+        <form class="form-box" id="pointForm" style="max-width:none;">
+          <div class="field"><label>اسم المستخدم (اليوزر)</label><input type="text" id="pointUsername" placeholder="مثال: krkr.77" required></div>
+          <div class="field">
+            <label>النوع</label>
+            <select id="pointType">
+              <option value="point">نقطة</option>
+              <option value="warning">تحذير</option>
+            </select>
+          </div>
+          <div class="field"><label>السبب / الرسالة</label><input type="text" id="pointMessage" placeholder="سبب النقطة أو التحذير" required></div>
+          <button type="submit" class="btn">إصدار</button>
+        </form>
+      </div>
+
+      <div id="pointsListHolder"><div class="empty-note">جاري التحميل…</div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // =====================================================================
+  // CONFIG — fill these in from Supabase → Project Settings → API.
+  // Both values below are PUBLIC/SAFE to ship in the browser (the anon
+  // key only ever works within the RLS policies from setup.sql).
+  // NEVER put the service_role key here or anywhere in this file.
+  // =====================================================================
+  const SUPABASE_URL = 'https://fyxiqmgberrywzxrekqw.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_tmcL8VfIKOS9kz_hcdS1Ww__O3GtlVf';
+  const EMAIL_DOMAIN = '@nexus.local'; // fake email domain used for username-based login
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  let currentProfile = null; // { id, username, role }
+  let currentTaskCategory = null;
+
+  function toast(msg){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=> t.classList.remove('show'), 2600);
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------------- Auth ----------------
+  $('#loginForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const username = $('#loginUser').value.trim();
+    const password = $('#loginPass').value;
+    const err = $('#loginError');
+    const btn = $('#loginBtn');
+    err.classList.remove('show');
+    btn.disabled = true; btn.textContent = 'جاري الدخول...';
+    try{
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: username + EMAIL_DOMAIN,
+        password: password
+      });
+      if (error || !data.user){
+        err.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة';
+        err.classList.add('show');
+        return;
+      }
+      const { data: profile, error: pErr } = await sb
+        .from('profiles').select('*').eq('id', data.user.id).single();
+      if (pErr || !profile){
+        err.textContent = 'تم الدخول لكن ما لقينا ملف المستخدم — تفاصيل: ' + (pErr ? (pErr.message || pErr.code || JSON.stringify(pErr)) : 'no profile row');
+        err.classList.add('show');
+        await sb.auth.signOut();
+        return;
+      }
+      currentProfile = profile;
+      enterApp();
+    } catch(ex){
+      err.textContent = 'تعذّر الاتصال بالخادم';
+      err.classList.add('show');
+    } finally {
+      btn.disabled = false; btn.textContent = 'تسجيل الدخول';
+    }
+  });
+
+  $('#logoutBtn').addEventListener('click', async function(){
+    await sb.auth.signOut();
+    currentProfile = null;
+    $('#loginUser').value=''; $('#loginPass').value='';
+    $('#loginError').classList.remove('show');
+    $('#screen-app').classList.remove('active');
+    $('#screen-login').classList.add('active');
+  });
+
+  function enterApp(){
+    $('#screen-login').classList.remove('active');
+    $('#screen-app').classList.add('active');
+    $('#whoName').textContent = currentProfile.username;
+    const badge = $('#roleBadge');
+    const isManager = currentProfile.role === 'manager';
+    badge.textContent = isManager ? 'مسؤول الإدارة' : 'الإدارة العادية';
+    badge.classList.toggle('manager', isManager);
+    $('#managerMeetingExtra').style.display = isManager ? 'block' : 'none';
+    $('#managerPointsPanel').style.display = isManager ? 'block' : 'none';
+    showPage('page-dashboard');
+    loadMeeting();
+    loadPoints();
+  }
+
+  // ---------------- Navigation ----------------
+  function showPage(id){
+    $$('#screen-app .page').forEach(p => p.style.display = 'none');
+    const t = document.getElementById(id);
+    if (t) t.style.display = 'block';
+    window.scrollTo({top:0, behavior:'instant'});
+  }
+
+  const TASK_TITLES = {
+    tickets: 'استلام تكتات', violators: 'إشراف على المخالفين',
+    voice: 'إشراف على الفويسات', chat: 'إشراف على الشات'
+  };
+
+  document.addEventListener('click', function(e){
+    const tile = e.target.closest('[data-goto]');
+    if (tile){ showPage(tile.getAttribute('data-goto')); return; }
+    const back = e.target.closest('[data-back]');
+    if (back){ showPage(back.getAttribute('data-back')); return; }
+    const taskTile = e.target.closest('[data-open-task]');
+    if (taskTile){
+      currentTaskCategory = taskTile.getAttribute('data-open-task');
+      $('#taskDetailTitle').textContent = taskTile.getAttribute('data-title');
+      showPage('page-task-detail');
+      loadTasks();
+      return;
+    }
+    const doneBtn = e.target.closest('[data-mark-done]');
+    if (doneBtn){ markTaskDone(doneBtn.getAttribute('data-mark-done')); return; }
+  });
+
+  // ---------------- Meetings ----------------
+  function renderMeetingCard(meeting){
+    const holder = $('#meetingCardHolder');
+    if (!meeting){
+      holder.innerHTML = '<div class="empty-note">لا يوجد اجتماع مجدول حالياً.</div>';
+      return;
+    }
+    const note = meeting.announcement ? '<div class="m-note">' + escapeHtml(meeting.announcement) + '</div>' : '';
+    holder.innerHTML =
+      '<div class="meeting-card"><div class="m-label">اجتماع</div>' +
+      '<div class="m-date">تاريخ: ' + escapeHtml(meeting.meet_date || '—') + '</div>' + note + '</div>' +
+      '<button class="btn" id="goJoinBtn" style="margin-bottom:14px;">الانضمام للاجتماع</button>';
+    $('#goJoinBtn').addEventListener('click', function(){
+      $('#joinSubtitle').textContent = (meeting.announcement || 'اجتماع إدارة') + ' — ' + (meeting.meet_date || '');
+      showPage('page-join');
+    });
+    if (currentProfile.role === 'manager'){
+      $('#meetingDate').value = meeting.meet_date || '';
+      $('#meetingAnnouncement').value = meeting.announcement || '';
+    }
+  }
+
+  async function loadMeeting(){
+    const { data, error } = await sb.from('meetings').select('*').order('updated_at', { ascending:false }).limit(1);
+    if (error){ toast('تعذّر تحميل الاجتماع: ' + error.message); return; }
+    renderMeetingCard(data && data.length ? data[0] : null);
+  }
+
+  $('#meetingForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const meet_date = $('#meetingDate').value.trim();
+    const announcement = $('#meetingAnnouncement').value.trim();
+    const { error } = await sb.from('meetings').insert({
+      meet_date, announcement, updated_by: currentProfile.username
+    });
+    if (error){ toast('فشل النشر: ' + error.message); return; }
+    toast('تم نشر الاجتماع لكل الأجهزة');
+    loadMeeting();
+  });
+
+  $('#deleteMeetingBtn').addEventListener('click', async function(){
+    const { error } = await sb.from('meetings').delete().gt('id', 0);
+    if (error){ toast('فشل الحذف: ' + error.message); return; }
+    $('#meetingForm').reset();
+    toast('تم حذف الاجتماع لكل الأجهزة');
+    loadMeeting();
+  });
+
+  $('#joinForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const name = $('#joinName').value.trim();
+    toast('تم تسجيل انضمام: ' + name);
+    $('#joinForm').reset();
+    showPage('page-meeting');
+  });
+
+  // ---------------- Points & Warnings ----------------
+  function typeLabel(t){ return t === 'warning' ? 'تحذير' : 'نقطة'; }
+
+  function renderPointsList(items){
+    const holder = $('#pointsListHolder');
+    if (!items || items.length === 0){
+      holder.innerHTML = '<div class="empty-note">لا يوجد نقاط أو تحذيرات مسجّلة حالياً.</div>';
+      return;
+    }
+    holder.innerHTML = items.map(item => {
+      const isWarning = item.type === 'warning';
+      const style = isWarning
+        ? 'background:rgba(192,85,74,0.15); color:#e2938a; border-color:rgba(192,85,74,0.35);'
+        : 'background:rgba(202,160,84,0.15); color:var(--gold-2); border-color:rgba(202,160,84,0.3);';
+      let when = ''; try{ when = new Date(item.created_at).toLocaleString('ar'); }catch(e){}
+      return '<div class="panel-box">' +
+        '<span class="badge" style="' + style + '">' + typeLabel(item.type) + '</span>' +
+        '<div class="p-title">للمستخدم: ' + escapeHtml(item.username) + '</div>' +
+        '<div class="p-desc">' + escapeHtml(item.message) + '</div>' +
+        '<div class="p-desc" style="margin-top:8px; color:var(--gold-2);">صادر من المشرف المسؤول: ' + escapeHtml(item.issued_by) + '</div>' +
+        (when ? '<div class="p-desc" style="margin-top:2px;">' + when + '</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  async function loadPoints(){
+    const { data, error } = await sb.from('logs').select('*').order('created_at', { ascending:false }).limit(100);
+    if (error){ toast('تعذّر تحميل السجل: ' + error.message); return; }
+    renderPointsList(data || []);
+  }
+
+  $('#pointForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const username = $('#pointUsername').value.trim();
+    const type = $('#pointType').value;
+    const message = $('#pointMessage').value.trim();
+    const { error } = await sb.from('logs').insert({ username, type, message, issued_by: currentProfile.username });
+    if (error){ toast('فشل الإصدار: ' + error.message); return; }
+    $('#pointForm').reset();
+    toast('تم الإصدار وظهر لجميع الأجهزة');
+    loadPoints();
+  });
+
+  // ---------------- Tasks ----------------
+  function renderTaskList(items){
+    const holder = $('#taskListHolder');
+    if (!items || items.length === 0){
+      holder.innerHTML = '<div class="empty-note">لا يوجد عناصر مسجّلة بهذا القسم بعد.</div>';
+      return;
+    }
+    holder.innerHTML = items.map(item => {
+      const doneBtn = item.status === 'open'
+        ? '<button class="mark-done-btn" data-mark-done="' + item.id + '">تمييز كمكتمل</button>'
+        : '';
+      return '<div class="panel-box"><div class="task-item">' +
+        '<div>' +
+          '<div class="p-title">' + escapeHtml(item.title) + '</div>' +
+          (item.note ? '<div class="p-desc">' + escapeHtml(item.note) + '</div>' : '') +
+          '<div class="p-desc" style="margin-top:6px;">بواسطة: ' + escapeHtml(item.created_by) + '</div>' +
+        '</div>' +
+        '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">' +
+          '<span class="status-pill ' + item.status + '">' + (item.status === 'done' ? 'مكتمل' : 'مفتوح') + '</span>' +
+          doneBtn +
+        '</div>' +
+      '</div></div>';
+    }).join('');
+  }
+
+  async function loadTasks(){
+    if (!currentTaskCategory) return;
+    const { data, error } = await sb.from('tasks').select('*')
+      .eq('category', currentTaskCategory).order('created_at', { ascending:false }).limit(100);
+    if (error){ toast('تعذّر تحميل القائمة: ' + error.message); return; }
+    renderTaskList(data || []);
+  }
+
+  $('#taskForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const title = $('#taskTitle').value.trim();
+    const note = $('#taskNote').value.trim();
+    const { error } = await sb.from('tasks').insert({
+      category: currentTaskCategory, title, note, created_by: currentProfile.username
+    });
+    if (error){ toast('فشل الإضافة: ' + error.message); return; }
+    $('#taskForm').reset();
+    toast('تمت الإضافة');
+    loadTasks();
+  });
+
+  async function markTaskDone(id){
+    const { error } = await sb.from('tasks').update({ status:'done' }).eq('id', id);
+    if (error){ toast('فشل التحديث: ' + error.message); return; }
+    loadTasks();
+  }
+
+  // ---------------- Resume session on reload ----------------
+  (async function init(){
+    const { data } = await sb.auth.getSession();
+    if (data && data.session && data.session.user){
+      const { data: profile } = await sb.from('profiles').select('*').eq('id', data.session.user.id).single();
+      if (profile){ currentProfile = profile; enterApp(); }
+    }
+  })();
+</script>
+</body>
+</html>
